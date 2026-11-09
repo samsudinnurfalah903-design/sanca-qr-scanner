@@ -129,12 +129,43 @@
       }
     }
 
-    
-function kirimHasil() {
+    function kirimHasil() {
   if (!hasilQR) {
     status("Belum ada QR Code yang berhasil dipindai.");
     return;
   }
+
+  const params = new URLSearchParams(window.location.search);
+  const returnOrigin = params.get("returnOrigin");
+
+  if (!returnOrigin || !window.opener || window.opener.closed) {
+    status("Halaman E-Voting tidak ditemukan. Buka pemindai dari aplikasi E-Voting.");
+    return;
+  }
+
+  try {
+    const alamat = new URL(returnOrigin);
+
+    if (alamat.protocol !== "https:") {
+      status("Alamat tujuan tidak aman.");
+      return;
+    }
+
+    window.opener.postMessage(
+      {
+        type: "SANCA_QR_SCANNED",
+        code: hasilQR.trim()
+      },
+      alamat.origin
+    );
+
+    status("QR berhasil dikirim ke aplikasi E-Voting.");
+    setTimeout(() => window.close(), 1000);
+
+  } catch (error) {
+    status("Gagal mengirim QR: " + error.message);
+  }
+}
 
   if (window.opener && !window.opener.closed) {
     const asal = document.referrer
