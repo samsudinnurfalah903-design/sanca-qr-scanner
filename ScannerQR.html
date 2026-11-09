@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pemindai QR E-Voting Desa Sanca</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 480px;
+      margin: 20px auto;
+      background: white;
+      padding: 22px;
+      border-radius: 14px;
+      box-shadow: 0 3px 12px #0002;
+    }
+    h2 { color: #14532d; }
+    #reader {
+      width: 100%;
+      margin: 20px auto;
+    }
+    #status {
+      padding: 12px;
+      background: #e0f2fe;
+      border-radius: 8px;
+      color: #075985;
+      font-size: 14px;
+    }
+    #hasil {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      padding: 12px 18px;
+      margin: 8px 4px;
+      border: 0;
+      border-radius: 8px;
+      color: white;
+      background: #15803d;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    button:disabled {
+      background: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>PEMINDAI QR CODE</h2>
+    <p>E-Voting Pilkades Desa Sanca</p>
+
+    <div id="status">Menyiapkan kamera...</div>
+    <div id="reader"></div>
+
+    <p>Hasil pemindaian:</p>
+    <input id="hasil" type="text" readonly
+           placeholder="Belum ada QR yang dipindai">
+
+    <button id="ulang" onclick="mulaiKamera()" disabled>
+      Pindai Ulang
+    </button>
+    <button onclick="kirimHasil()">
+      Kirim Hasil
+    </button>
+  </div>
+
+  <script>
+    let pemindai;
+    let hasilQR = "";
+    let sudahTerbaca = false;
+
+    function status(pesan) {
+      document.getElementById("status").textContent = pesan;
+    }
+
+    async function mulaiKamera() {
+      sudahTerbaca = false;
+      hasilQR = "";
+      document.getElementById("hasil").value = "";
+      document.getElementById("ulang").disabled = true;
+      status("Meminta izin penggunaan kamera...");
+
+      try {
+        if (!pemindai) {
+          pemindai = new Html5Qrcode("reader");
+        }
+
+        await pemindai.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+          },
+          async function(teks) {
+            if (sudahTerbaca) return;
+            sudahTerbaca = true;
+            hasilQR = teks;
+
+            document.getElementById("hasil").value = teks;
+            status("QR berhasil dipindai.");
+
+            try {
+              await pemindai.stop();
+            } catch (e) {}
+
+            document.getElementById("ulang").disabled = false;
+          },
+          function() {}
+        );
+
+        status("Kamera aktif. Arahkan QR Code ke kamera.");
+      } catch (error) {
+        status("Kamera gagal dibuka: " + error +
+          ". Periksa izin kamera dan coba lagi.");
+        document.getElementById("ulang").disabled = false;
+      }
+    }
+
+    function kirimHasil() {
+      if (!hasilQR) {
+        status("Belum ada QR Code yang berhasil dipindai.");
+        return;
+      }
+
+      if (window.opener && !window.opener.closed) {
+        try {
+          const asal = document.referrer
+            ? new URL(document.referrer).origin
+            : "";
+
+          if (!asal) {
+            status("Asal halaman tidak terdeteksi. Silakan hubungi petugas.");
+            return;
+          }
+
+          window.opener.postMessage(
+            {
+              tipe: "HASIL_SCAN_QR_SANCA",
+              hasil: hasilQR
+            },
+            asal
+          );
+
+          status("Hasil dikirim ke halaman E-Voting.");
+          setTimeout(() => window.close(), 1000);
+        } catch (error) {
+          status("Gagal mengirim hasil: " + error);
+        }
+      } else {
+        status("Halaman E-Voting tidak ditemukan. Hasil QR tetap terlihat di kotak.");
+      }
+    }
+
+    window.onload = mulaiKamera;
+  </script>
+</body>
+</html>
