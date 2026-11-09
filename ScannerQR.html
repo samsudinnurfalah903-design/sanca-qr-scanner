@@ -129,40 +129,38 @@
       }
     }
 
-    function kirimHasil() {
-      if (!hasilQR) {
-        status("Belum ada QR Code yang berhasil dipindai.");
-        return;
-      }
+    
+function kirimHasil() {
+  if (!hasilQR) {
+    status("Belum ada QR Code yang berhasil dipindai.");
+    return;
+  }
 
-      if (window.opener && !window.opener.closed) {
-        try {
-          const asal = document.referrer
-            ? new URL(document.referrer).origin
-            : "";
+  if (window.opener && !window.opener.closed) {
+    const asal = document.referrer
+      ? new URL(document.referrer).origin
+      : "";
 
-          if (!asal) {
-            status("Asal halaman tidak terdeteksi. Silakan hubungi petugas.");
-            return;
-          }
-
-          window.opener.postMessage(
-            {
-              tipe: "HASIL_SCAN_QR_SANCA",
-              hasil: hasilQR
-            },
-            asal
-          );
-
-          status("Hasil dikirim ke halaman E-Voting.");
-          setTimeout(() => window.close(), 1000);
-        } catch (error) {
-          status("Gagal mengirim hasil: " + error);
-        }
-      } else {
-        status("Halaman E-Voting tidak ditemukan. Hasil QR tetap terlihat di kotak.");
-      }
+    if (!asal) {
+      status("Asal halaman E-Voting tidak terdeteksi.");
+      return;
     }
+
+    window.opener.postMessage(
+      {
+        type: "SANCA_QR_SCANNED",
+        code: hasilQR
+      },
+      asal
+    );
+
+    status("Hasil QR dikirim ke aplikasi E-Voting.");
+    setTimeout(() => window.close(), 1000);
+  } else {
+    status("Halaman E-Voting tidak ditemukan.");
+  }
+}
+
 
     window.onload = mulaiKamera;
   </script>
